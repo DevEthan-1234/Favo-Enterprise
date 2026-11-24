@@ -52,7 +52,8 @@ export default function Hero({ onImport, onChat }) {
             Electronics at prices <span className="wordmark text-gold pr-1">you dream of</span>
           </h1>
           <p className="mt-4 text-base sm:text-lg text-muted max-w-xl">
-            Brand new, quality checked products at great prices. {BRAND.services}
+            Brand new, quality checked products at great prices.
+            <span className="block mt-1">{BRAND.services}</span>
           </p>
 
           <div className="mt-7 flex flex-col sm:flex-row gap-3">

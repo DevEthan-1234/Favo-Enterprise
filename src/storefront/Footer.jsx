@@ -9,7 +9,7 @@ export default function Footer({ onAdmin, onTrack, onImport }) {
       <div className="mx-auto max-w-7xl px-4 py-10 grid gap-8 sm:grid-cols-3">
         <div>
           <Logo />
-          <p className="mt-3 text-sm text-muted max-w-xs">{BRAND.tagline}</p>
+          <p className="mt-3 text-sm text-muted max-w-xs">{BRAND.tagline}<span className="block mt-1">{BRAND.taglineSub}</span></p>
         </div>
         <div className="text-sm space-y-2">
           <p className="font-semibold">Customer care</p>

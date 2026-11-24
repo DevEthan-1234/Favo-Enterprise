@@ -1,7 +1,8 @@
 export const BRAND = {
   name: 'Favo Enterprise',
   handle: '@favoenterprise',
-  tagline: 'Electronics at prices you dream of 🛍 | Your trusted online tech store 📦',
+  tagline: 'Electronics at prices you dream of',
+  taglineSub: 'Your trusted online tech store 📦',
   services: 'Buy | Order | Import Electronics 📲',
   whatsappDisplay: '+254 795 679 552',
   whatsappNumber: '254795679552',
