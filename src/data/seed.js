@@ -9,7 +9,7 @@ export const BRAND = {
   // M-Pesa Send Money destination. mpesaName = the name M-Pesa shows when sending to this number.
   mpesaNumber: '0795679552',
   mpesaDisplay: '0795 679 552',
-  mpesaName: '',
+  mpesaName: 'WARREN ORAVO',
   instagram: 'https://instagram.com/favoenterprise',
 };
 
