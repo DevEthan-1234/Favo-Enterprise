@@ -44,7 +44,7 @@ const toProduct = (r) => ({
 });
 const toOrder = (r) => ({
   id: r.id, mpesaCode: r.mpesa_code, customerName: r.customer_name, phone: r.phone, location: r.location,
-  notes: r.notes, status: r.status, deliveryFee: r.delivery_fee, items: r.items || [], total: r.total,
+  notes: r.notes, status: r.status, paymentStatus: r.payment_status || 'verified', deliveryFee: r.delivery_fee, items: r.items || [], total: r.total,
   createdAt: ts(r.created_at),
 });
 const toConversation = (r) => ({
@@ -334,7 +334,7 @@ export function StoreProvider({ children }) {
   const clearCart = useCallback(() => setCart([]), [setCart]);
 
   /* ---------------- Orders ---------------- */
-  const placeOrder = useCallback(async ({ customerName, phone, location, notes }) => {
+  const placeOrder = useCallback(async ({ customerName, phone, location, notes, mpesaCode }) => {
     if (!cart.length) return { error: 'Your cart is empty.' };
     const { data, error } = await supabase.rpc('place_order', {
       p_name: customerName,
@@ -342,6 +342,7 @@ export function StoreProvider({ children }) {
       p_location: location,
       p_notes: notes || '',
       p_items: cart.map((c) => ({ productId: c.productId, qty: c.qty })),
+      p_mpesa_code: mpesaCode,
     });
     if (error) {
       loadCatalog();
@@ -370,6 +371,14 @@ export function StoreProvider({ children }) {
     if (error) { await loadAdmin(); return fail(error); }
     return ok(null);
   }, [loadAdmin]);
+
+  /** Admin: confirm (received = true) or reject a Send Money payment. Rejecting cancels the order and restocks. */
+  const reviewPayment = useCallback(async (id, received) => {
+    const { error } = await supabase.rpc('admin_review_payment', { p_id: id, p_received: received });
+    if (error) return fail(error);
+    await Promise.all([loadAdmin(), received ? null : loadCatalog()]);
+    return ok(null);
+  }, [loadAdmin, loadCatalog]);
 
   /* ---------------- Customer chat ---------------- */
   const refreshCustomerConversation = useCallback(async () => {
@@ -428,14 +437,14 @@ export function StoreProvider({ children }) {
     addSection, renameSection, moveSection, deleteSection,
     saveProduct, uploadProductImage, deleteProduct, adjustStock,
     addToCart, setCartQty, clearCart,
-    placeOrder, trackOrders, updateOrder,
+    placeOrder, trackOrders, updateOrder, reviewPayment,
     sendCustomerMessage, refreshCustomerConversation, markCustomerRead, setChatIdentity,
     sendAdminReply, markAdminRead, deleteConversation,
   }), [
     ready, loadError, loadCatalog, authReady, isAdmin, login, logout,
     sections, products, orders, conversations, cart, cartLines, chatIdentity, myOrders, customerConversation,
     addSection, renameSection, moveSection, deleteSection, saveProduct, uploadProductImage, deleteProduct, adjustStock,
-    addToCart, setCartQty, clearCart, placeOrder, trackOrders, updateOrder,
+    addToCart, setCartQty, clearCart, placeOrder, trackOrders, updateOrder, reviewPayment,
     sendCustomerMessage, refreshCustomerConversation, markCustomerRead, setChatIdentity,
     sendAdminReply, markAdminRead, deleteConversation,
   ]);

@@ -65,13 +65,14 @@ td,th{padding:8px 4px;border-bottom:1px solid #e2e8f0;font-size:14px}th{text-ali
 <h1>${esc(BRAND.name)}</h1><div class="muted">Electronics at prices you dream of · WhatsApp ${esc(BRAND.whatsappDisplay)}</div>
 <hr style="border:none;border-top:1px dashed #cbd5e1;margin:18px 0">
 <div class="code">M-PESA Ref: ${esc(order.mpesaCode)}</div>
+<div class="row"><span>Payment</span><b>${order.paymentStatus === 'unverified' ? 'Awaiting confirmation' : order.paymentStatus === 'rejected' ? 'Not received (order cancelled)' : 'Confirmed'}</b></div>
 <div class="row"><span>Order No.</span><b>${esc(order.id)}</b></div>
 <div class="row"><span>Date</span><span>${esc(fmtDate(order.createdAt))}</span></div>
 <div class="row"><span>Customer</span><span>${esc(order.customerName)}</span></div>
 <div class="row"><span>Phone</span><span>${esc(order.phone)}</span></div>
 <div class="row"><span>Delivery to</span><span>${esc(order.location)}</span></div>
 <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody></table>
-<div class="row total"><span>Total Paid</span><span>${kes(order.total)}</span></div>
+<div class="row total"><span>${order.paymentStatus === 'verified' || !order.paymentStatus ? 'Total Paid' : 'Total'}</span><span>${kes(order.total)}</span></div>
 <p class="muted">Delivery fee is calculated based on your location and confirmed via call/WhatsApp. Track your order on our website using your order number.</p>
 <p class="muted">Thank you for shopping with ${esc(BRAND.name)} 💛</p></body></html>`;
   const blob = new Blob([html], { type: 'text/html' });
@@ -111,4 +112,16 @@ export async function shrinkImage(file, maxSide = 1400, quality = 0.85) {
   if (!blob || blob.type !== 'image/webp') blob = await encode('image/jpeg');
   if (!blob) throw new Error('encode failed');
   return blob;
+}
+
+/**
+ * Finds the M-Pesa transaction code in what the customer typed or pasted.
+ * Accepts the bare code (e.g. "tkl7h2j9qx") or the whole confirmation SMS
+ * ("TKL7H2J9QX Confirmed. Ksh1,500.00 sent to …"). Codes are 10 characters,
+ * start with a letter and contain at least one digit.
+ */
+export function extractMpesaCode(text) {
+  const up = String(text || '').toUpperCase();
+  const m = up.match(/\b(?=[A-Z0-9]*\d)[A-Z][A-Z0-9]{9}\b/);
+  return m ? m[0] : null;
 }

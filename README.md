@@ -24,12 +24,12 @@ src/
   lib/utils.js            KES formatting, KE phone validation, WhatsApp links, receipts
   components/ui.jsx       Modal, Drawer, Badge, Button, Field, SafeImage, Toast, PageHeader
   storefront/             Navbar, Hero, Catalog, ProductCard, QuickView, CartDrawer,
-                          Checkout (STK simulation), ImportModal, OrderTracker, ChatWidget, Footer
+                          Checkout (M-Pesa Send Money + code), ImportModal, OrderTracker, ChatWidget, Footer
   admin/                  AdminPortal, Financials, OrdersHub, Inventory, ProductForm,
                           SectionManager, Inbox
 ```
 
 Shared data (products, sections, orders, messages) lives in Supabase. Each device keeps only its own cart, chat key and list of its order numbers.
 
-M-Pesa is still simulated. See the end of [SETUP.md](SETUP.md).
+Payments use M-Pesa Send Money with admin confirmation. See the end of [SETUP.md](SETUP.md).
 # Favo-Enterprise

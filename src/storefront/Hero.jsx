@@ -4,7 +4,7 @@ import { waLink } from '../lib/utils.js';
 
 const PROPS = [
   { icon: ShieldCheck, title: 'Genuine & Warrantied', text: 'Every device tested & covered' },
-  { icon: Smartphone, title: 'Pay via M-Pesa', text: 'Instant STK push checkout' },
+  { icon: Smartphone, title: 'Pay via M-Pesa', text: `Send Money to ${BRAND.mpesaDisplay}` },
   { icon: Truck, title: 'Countrywide Delivery', text: 'Nairobi same-day, upcountry 24–48h' },
   { icon: Globe2, title: 'Import on Order', text: 'We source any gadget from abroad' },
 ];

@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Banknote, Receipt, ShoppingCart, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Banknote, BadgeCheck, Receipt, ShoppingCart, TrendingUp } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
 import { Badge, PageHeader } from '../components/ui.jsx';
-import { ORDER_STATUSES } from '../data/seed.js';
+import { ORDER_STATUSES, PAYMENT_STATUSES } from '../data/seed.js';
 import { cx, fmtDate, kes } from '../lib/utils.js';
 
 const DAY = 86400000;
 const compact = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(Math.round(n)));
 
 export default function Financials({ onGoto }) {
-  const { orders, sections, products } = useStore();
+  const { orders: allOrders, sections, products } = useStore();
+  // Only payments the admin has confirmed count as revenue.
+  const orders = useMemo(() => allOrders.filter((o) => o.paymentStatus === 'verified'), [allOrders]);
+  const toCheck = allOrders.filter((o) => o.paymentStatus === 'unverified');
   const [range, setRange] = useState(7);
 
   const stats = useMemo(() => {
@@ -47,14 +50,20 @@ export default function Financials({ onGoto }) {
   const maxCat = Math.max(1, ...byCategory.map((c) => c.value));
   const rangeTotal = daily.reduce((s, d) => s + d.value, 0);
   const lowStock = products.filter((p) => p.stock <= 3);
-  const pendingFee = orders.filter((o) => o.deliveryFee == null).length;
+  const pendingFee = orders.filter((o) => o.deliveryFee == null && o.status !== 'cancelled').length;
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Financial Overview" subtitle="Live revenue from M-Pesa checkouts. Updates instantly on every sale." />
+      <PageHeader title="Financial Overview" subtitle="Revenue from confirmed M-Pesa payments. Updates live as you confirm orders." />
 
-      {(lowStock.length > 0 || pendingFee > 0) && (
+      {(lowStock.length > 0 || pendingFee > 0 || toCheck.length > 0) && (
         <div className="mb-6 grid sm:grid-cols-2 gap-3">
+          {toCheck.length > 0 && (
+            <button onClick={() => onGoto('orders')} className="sm:col-span-2 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-left text-sm hover:bg-emerald-500/15">
+              <BadgeCheck className="size-5 text-emerald-500 shrink-0" />
+              <span><b>{toCheck.length} M-Pesa payment{toCheck.length > 1 ? 's' : ''}</b> ({kes(toCheck.reduce((a, o) => a + o.total, 0))}) to check against your M-Pesa messages →</span>
+            </button>
+          )}
           {lowStock.length > 0 && (
             <button onClick={() => onGoto('inventory')} className="flex items-center gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-left text-sm hover:bg-amber-500/15">
               <AlertTriangle className="size-5 text-amber-500 shrink-0" />
@@ -73,7 +82,7 @@ export default function Financials({ onGoto }) {
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Kpi icon={Banknote} label="Total Revenue" value={kes(stats.revenue)} sub={`+ ${kes(stats.deliveryFees)} delivery fees`} tone="amber" />
         <Kpi icon={TrendingUp} label="Net Profit (est.)" value={kes(stats.profit)} sub={`${stats.margin.toFixed(1)}% margin`} tone="emerald" />
-        <Kpi icon={ShoppingCart} label="Total Orders" value={stats.count.toLocaleString()} sub={`${orders.filter((o) => o.status !== 'delivered').length} in progress`} tone="sky" />
+        <Kpi icon={ShoppingCart} label="Total Orders" value={stats.count.toLocaleString()} sub={`${orders.filter((o) => o.status !== 'delivered').length} in progress · ${toCheck.length} to check`} tone="sky" />
         <Kpi icon={Receipt} label="Avg. Order Value" value={kes(stats.aov)} sub="per M-Pesa checkout" tone="violet" />
       </div>
 
@@ -133,7 +142,7 @@ export default function Financials({ onGoto }) {
         <div className="p-5 flex items-center justify-between">
           <div>
             <p className="font-semibold">M-Pesa Transaction Ledger</p>
-            <p className="text-xs text-muted">{orders.length} transaction{orders.length === 1 ? '' : 's'}</p>
+            <p className="text-xs text-muted">{allOrders.length} transaction{allOrders.length === 1 ? '' : 's'}</p>
           </div>
           <span className="flex items-center gap-1.5 text-xs text-emerald-500"><span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> Live</span>
         </div>
@@ -143,25 +152,27 @@ export default function Financials({ onGoto }) {
               <tr className="text-left text-xs uppercase tracking-wide text-muted border-y border-line bg-bgsoft/50">
                 <th className="px-5 py-3 font-semibold">Receipt code</th>
                 <th className="px-3 py-3 font-semibold">Customer phone</th>
-                <th className="px-3 py-3 font-semibold text-right">Amount paid</th>
+                <th className="px-3 py-3 font-semibold text-right">Amount</th>
+                <th className="px-3 py-3 font-semibold">Payment</th>
                 <th className="px-3 py-3 font-semibold">Delivery location</th>
                 <th className="px-3 py-3 font-semibold">Status</th>
                 <th className="px-5 py-3 font-semibold">Date</th>
               </tr>
             </thead>
             <tbody>
-              {orders.map((o) => (
+              {allOrders.map((o) => (
                 <tr key={o.id} className="border-b border-line last:border-0 hover:bg-bgsoft/40">
                   <td className="px-5 py-3 font-mono font-bold text-emerald-500 tracking-wide">{o.mpesaCode}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{o.phone}<span className="block text-xs text-muted">{o.customerName}</span></td>
                   <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">{kes(o.total)}</td>
+                  <td className="px-3 py-3"><PaymentBadge status={o.paymentStatus} /></td>
                   <td className="px-3 py-3">{o.location}</td>
                   <td className="px-3 py-3"><StatusBadge status={o.status} /></td>
                   <td className="px-5 py-3 text-muted whitespace-nowrap">{fmtDate(o.createdAt)}</td>
                 </tr>
               ))}
-              {orders.length === 0 && (
-                <tr><td colSpan={6} className="px-5 py-10 text-center text-muted">No transactions yet. Sales appear here the moment a customer pays.</td></tr>
+              {allOrders.length === 0 && (
+                <tr><td colSpan={7} className="px-5 py-10 text-center text-muted">No transactions yet. Orders appear here as soon as a customer submits an M-Pesa code.</td></tr>
               )}
             </tbody>
           </table>
@@ -185,6 +196,12 @@ function Kpi({ icon: Icon, label, value, sub, tone }) {
 
 export function StatusBadge({ status }) {
   const s = ORDER_STATUSES.find((x) => x.key === status) || ORDER_STATUSES[0];
+  if (status === 'cancelled') return <Badge tone="red">Cancelled</Badge>;
   const tone = { pending: 'amber', confirmed: 'sky', dispatched: 'violet', delivered: 'emerald' }[s.key];
   return <Badge tone={tone}>{s.admin}</Badge>;
+}
+
+export function PaymentBadge({ status }) {
+  const p = PAYMENT_STATUSES[status] || PAYMENT_STATUSES.verified;
+  return <Badge tone={p.tone}>{p.admin}</Badge>;
 }

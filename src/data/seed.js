@@ -6,6 +6,10 @@ export const BRAND = {
   whatsappDisplay: '+254 795 679 552',
   whatsappNumber: '254795679552',
   hours: 'Mon – Sat',
+  // M-Pesa Send Money destination. mpesaName = the name M-Pesa shows when sending to this number.
+  mpesaNumber: '0795679552',
+  mpesaDisplay: '0795 679 552',
+  mpesaName: '',
   instagram: 'https://instagram.com/favoenterprise',
 };
 
@@ -17,6 +21,12 @@ export const ORDER_STATUSES = [
   { key: 'dispatched', admin: 'Out for Delivery', customer: 'Dispatched' },
   { key: 'delivered', admin: 'Delivered', customer: 'Delivered' },
 ];
+
+export const PAYMENT_STATUSES = {
+  unverified: { admin: 'Check payment', customer: 'Confirming payment', tone: 'amber' },
+  verified: { admin: 'Paid', customer: 'Payment confirmed', tone: 'emerald' },
+  rejected: { admin: 'Not received', customer: 'Payment not received', tone: 'red' },
+};
 
 export const DELIVERY_AREAS = [
   'Nairobi CBD', 'Westlands', 'Kilimani', 'Karen', 'Lavington', 'Kasarani', 'Embakasi', 'Rongai',

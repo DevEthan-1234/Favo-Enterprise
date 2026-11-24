@@ -63,6 +63,13 @@ On the website, the admin signs in with username `favoenterprise` and the passwo
 - Customers can only **place an order** (stock and prices are checked on the server), **track an order** by its number or M-Pesa code, and **chat**. Each customer can only read their own chat, using a private key stored on their device.
 - Basic spam limits: 5 orders per phone number per hour, 5 new chats per number per hour, and 20 messages per chat every 5 minutes.
 
-## Still simulated
+## M-Pesa payments (Send Money)
 
-**M-Pesa payment is still a simulation.** Until Safaricom Daraja is connected, an order is recorded without any money changing hands. Someone who knows this could place fake orders that reserve stock. Check new orders against your M-Pesa statement before dispatching, and delete any fake ones in Supabase's **Table Editor → orders**.
+Customers pay with M-Pesa **Send Money** to 0795 679 552 and type in the confirmation code from their SMS. The code and number are set in `src/data/seed.js` (`BRAND.mpesaNumber`, `BRAND.mpesaName`). Requires `supabase/migrations/0005_send_money.sql`.
+
+- Each new order shows **Check payment** in the admin Orders page. Match the code and amount against the M-Pesa SMS on your phone, then tap **Payment received** or **Not received**.
+- **Not received** cancels the order and puts the items back in stock.
+- Revenue and profit in Financials count only confirmed payments.
+- Each M-Pesa code can be used for one order only.
+- Stock is held from the moment the order is placed, so check pending payments regularly.
+- An automatic "Enter PIN" prompt (Daraja STK push) needs a business Till or Paybill number, not a personal number.

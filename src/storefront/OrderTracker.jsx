@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Download, Loader2, MessageCircle, PackageSearch, Search } from 'lucide-react';
+import { Check, Clock, Download, Loader2, MessageCircle, PackageSearch, Search, XCircle } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
 import { Button, Modal } from '../components/ui.jsx';
 import { ORDER_STATUSES } from '../data/seed.js';
@@ -77,6 +77,18 @@ function OrderStatusCard({ order: o }) {
         <p className="font-display font-bold text-amber-500">{kes(o.total)}</p>
       </div>
 
+      {o.paymentStatus === 'unverified' && (
+        <div className="mt-4 flex gap-2 rounded-xl bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+          <Clock className="size-4 shrink-0" />
+          <span>We're confirming your M-Pesa payment <b className="font-mono">{o.mpesaCode}</b>. This is usually quick during business hours.</span>
+        </div>
+      )}
+      {o.paymentStatus === 'rejected' ? (
+        <div className="mt-4 flex gap-2 rounded-xl bg-red-500/10 p-3 text-xs text-red-500">
+          <XCircle className="size-4 shrink-0" />
+          <span>We couldn't find a payment for M-Pesa code <b className="font-mono">{o.mpesaCode}</b>, so this order was cancelled. If you did pay, message us on WhatsApp with your M-Pesa SMS.</span>
+        </div>
+      ) : (
       <ol className="mt-5 grid grid-cols-4 relative">
         <div className="absolute top-3.5 left-[12.5%] right-[12.5%] h-0.5 bg-line" />
         <div className="absolute top-3.5 left-[12.5%] h-0.5 bg-emerald-500 transition-all duration-700" style={{ width: `${(Math.max(0, idx) / 3) * 75}%` }} />
@@ -89,6 +101,7 @@ function OrderStatusCard({ order: o }) {
           </li>
         ))}
       </ol>
+      )}
 
       <div className="mt-4 text-sm space-y-1">
         {o.items.map((i) => (
