@@ -33,7 +33,7 @@ export default function CartDrawer({ open, onClose, onCheckout }) {
         <div className="h-full flex flex-col items-center justify-center text-center py-16">
           <span className="grid size-16 place-items-center rounded-full bg-bgsoft"><ShoppingBag className="size-7 text-muted" /></span>
           <p className="mt-4 font-semibold">Your cart is empty</p>
-          <p className="text-sm text-muted mt-1">Discover great deals on electronics.</p>
+          <p className="text-sm text-muted mt-1">Discover great deals in our shop.</p>
           <Button className="mt-5" onClick={onClose}>Start Shopping</Button>
         </div>
       ) : (

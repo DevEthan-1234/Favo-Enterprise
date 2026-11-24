@@ -4,7 +4,7 @@ import { useStore } from '../store/StoreContext.jsx';
 import { Button, Field, Modal } from '../components/ui.jsx';
 import { normalizeKePhone, waLink } from '../lib/utils.js';
 
-const ORIGINS = ['Any / Best price', 'UK', 'USA', 'Dubai (UAE)', 'China'];
+const ORIGINS = ['China', 'Not sure / best price'];
 
 export default function ImportModal({ open, onClose, notify, onOpenChat }) {
   const { sendCustomerMessage, chatIdentity } = useStore();
@@ -70,7 +70,7 @@ export default function ImportModal({ open, onClose, notify, onOpenChat }) {
         <form onSubmit={submit} noValidate className="grid gap-4">
           <div className="flex gap-3 rounded-2xl bg-amber-500/10 p-3 text-sm">
             <Globe2 className="size-5 shrink-0 text-amber-500" />
-            <p className="text-muted">We source genuine electronics from abroad. Typical lead time: <b className="text-fg">7–21 days</b>. Get a full landed-cost quote — no commitment.</p>
+            <p className="text-muted">We source quality products directly from China. Typical lead time: <b className="text-fg">7–21 days</b>. Get a full landed-cost quote — no commitment.</p>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Your name" error={errors.name}><input className="input" value={form.name} onChange={set('name')} /></Field>

@@ -2,14 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, ImagePlus, Link2, Loader2, Save, Star, X } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
 import { Button, Field, Modal, SafeImage } from '../components/ui.jsx';
-import { CONDITIONS, PRESET_IMAGES } from '../data/seed.js';
+import { CONDITIONS } from '../data/seed.js';
 import { cx, kes } from '../lib/utils.js';
 
 const MAX_PHOTOS = 8;
 
 const CONDITION_LABELS = {
   'Brand New': 'Brand New',
-  'Ex-UK / Refurbished': 'Refurbished (Ex-UK)',
   'Pre-Order / Import': 'Import on Order (Pre-Order)',
 };
 
@@ -140,24 +139,6 @@ function PhotoManager({ images, onChange, error, onBusyChange }) {
         <Button type="button" variant="ghost" onClick={addUrl} disabled={!url.trim()}>Add</Button>
       </div>
 
-      <details className="text-xs">
-        <summary className="cursor-pointer font-semibold uppercase tracking-wide text-muted hover:text-fg">Stock photo presets</summary>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {PRESET_IMAGES.map((p) => {
-            const on = images.includes(p.url);
-            return (
-              <button
-                type="button"
-                key={p.label}
-                onClick={() => (on ? onChange((prev) => prev.filter((u) => u !== p.url)) : room > 0 && add([p.url]))}
-                className={cx('rounded-full border px-2.5 py-1 text-xs transition', on ? 'border-amber-500 bg-amber-500 text-slate-950' : 'border-line text-muted hover:text-fg hover:border-amber-500/50')}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-      </details>
 
       {(msg || error) && <p className="text-xs text-red-500" role="alert">{msg || error}</p>}
     </div>

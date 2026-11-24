@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowUpDown, RefreshCw, Search, SearchX, WifiOff, X } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
 import { cx } from '../lib/utils.js';
+import { conditionLabel } from '../data/seed.js';
 import ProductCard from './ProductCard.jsx';
 
 const SORTS = [
@@ -24,7 +25,7 @@ export default function Catalog({ onQuickView, onAdd, onImport }) {
     const list = products.filter((p) => {
       if (activeSection !== 'all' && p.sectionId !== activeSection) return false;
       if (!terms.length) return true;
-      const hay = `${p.title} ${p.brand} ${p.specs} ${p.description} ${p.condition}`.toLowerCase();
+      const hay = `${p.title} ${p.brand} ${p.specs} ${p.description} ${p.condition} ${conditionLabel(p.condition)}`.toLowerCase();
       return terms.every((t) => hay.includes(t));
     });
     const sorted = [...list];
@@ -51,7 +52,7 @@ export default function Catalog({ onQuickView, onAdd, onImport }) {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search phones, laptops, brands, specs…"
+              placeholder="Search products, brands, specs…"
               className="input pl-10 pr-9 rounded-2xl"
               aria-label="Search products"
             />

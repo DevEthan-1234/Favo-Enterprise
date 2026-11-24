@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, MessageCircle, Minus, Plus, Sh
 import { useStore } from '../store/StoreContext.jsx';
 import { Button, ConditionBadge, Modal, SafeImage, StockBadge } from '../components/ui.jsx';
 import { cx, kes, waLink } from '../lib/utils.js';
+import { conditionLabel } from '../data/seed.js';
 
 /** Swipeable photo gallery: scroll-snap on touch, arrows + thumbnails on desktop. */
 function Gallery({ images, title, condition }) {
@@ -94,7 +95,7 @@ export default function QuickView({ productId, onClose, onAdd }) {
   const section = sections.find((s) => s.id === p.sectionId);
   const specs = (p.specs || '').split('\n').map((s) => s.trim()).filter(Boolean);
   const out = p.stock <= 0;
-  const inquiry = `Hi Favo Enterprise 👋 I'm interested in the *${p.title}* (${kes(p.price)}, ${p.condition}). Is it available?`;
+  const inquiry = `Hi Favo Enterprise 👋 I'm interested in the *${p.title}* (${kes(p.price)}, ${conditionLabel(p.condition)}). Is it available?`;
 
   return (
     <Modal open={!!productId} onClose={onClose} title={p.title} size="lg">

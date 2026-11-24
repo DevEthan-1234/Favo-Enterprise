@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ImageOff, X } from 'lucide-react';
 import { cx, stockLabel } from '../lib/utils.js';
+import { conditionLabel } from '../data/seed.js';
 
 function useLockScroll(open) {
   useEffect(() => {
@@ -99,7 +100,7 @@ export function StockBadge({ stock }) {
 
 export function ConditionBadge({ condition }) {
   const tone = condition === 'Brand New' ? 'sky' : condition === 'Pre-Order / Import' ? 'violet' : 'amber';
-  return <Badge tone={tone}>{condition}</Badge>;
+  return <Badge tone={tone}>{conditionLabel(condition)}</Badge>;
 }
 
 export function SafeImage({ src, alt, className }) {

@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, Check, LayoutList, Pencil, Plus, Trash2, X } from '
 import { useStore } from '../store/StoreContext.jsx';
 import { Button, PageHeader } from '../components/ui.jsx';
 
-const SUGGESTIONS = ['Smart Home', 'Solar & Power', 'Cameras & Drones', 'TVs & Displays', 'Networking'];
+const SUGGESTIONS = ['Home & Kitchen', 'Accessories', 'Kids & Toys', 'Beauty & Care', 'Outdoor'];
 
 export default function SectionManager({ notify }) {
   const { sections, products, addSection, renameSection, moveSection, deleteSection } = useStore();
@@ -52,7 +52,7 @@ export default function SectionManager({ notify }) {
       <form onSubmit={(e) => { e.preventDefault(); add(name); }} className="glass rounded-3xl p-5">
         <p className="font-semibold mb-3">Create a new section</p>
         <div className="flex gap-2">
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Smart Home" />
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Home & Kitchen" />
           <Button type="submit" disabled={!name.trim()}><Plus className="size-4" /> Add</Button>
         </div>
         {error && <p className="mt-2 text-sm text-red-500">{error}</p>}

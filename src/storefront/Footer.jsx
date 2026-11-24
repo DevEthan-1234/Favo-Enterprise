@@ -15,7 +15,7 @@ export default function Footer({ onAdmin, onTrack, onImport }) {
           <p className="font-semibold">Customer care</p>
           <button onClick={onTrack} className="block text-muted hover:text-fg">Track your order</button>
           <button onClick={onImport} className="block text-muted hover:text-fg">Request a custom import</button>
-          <a href="#shop" className="block text-muted hover:text-fg">Shop all electronics</a>
+          <a href="#shop" className="block text-muted hover:text-fg">Shop all products</a>
         </div>
         <div className="text-sm space-y-2">
           <p className="font-semibold">Contact</p>
