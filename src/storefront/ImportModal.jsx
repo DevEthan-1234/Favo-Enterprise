@@ -4,11 +4,10 @@ import { useStore } from '../store/StoreContext.jsx';
 import { Button, Field, Modal } from '../components/ui.jsx';
 import { normalizeKePhone, waLink } from '../lib/utils.js';
 
-const ORIGINS = ['China', 'Not sure / best price'];
 
 export default function ImportModal({ open, onClose, notify, onOpenChat }) {
   const { sendCustomerMessage, chatIdentity } = useStore();
-  const [form, setForm] = useState({ name: '', phone: '', item: '', link: '', budget: '', origin: ORIGINS[0], notes: '' });
+  const [form, setForm] = useState({ name: '', phone: '', item: '', link: '', budget: '', notes: '' });
   const [errors, setErrors] = useState({});
   const [sentText, setSentText] = useState(null);
 
@@ -39,7 +38,6 @@ export default function ImportModal({ open, onClose, notify, onOpenChat }) {
       `Item: ${form.item.trim()}`,
       form.link.trim() && `Link: ${form.link.trim()}`,
       form.budget && `Budget: KES ${Number(form.budget).toLocaleString('en-KE')}`,
-      `Source: ${form.origin}`,
       form.notes.trim() && `Notes: ${form.notes.trim()}`,
     ].filter(Boolean).join('\n');
 
@@ -70,23 +68,18 @@ export default function ImportModal({ open, onClose, notify, onOpenChat }) {
         <form onSubmit={submit} noValidate className="grid gap-4">
           <div className="flex gap-3 rounded-2xl bg-amber-500/10 p-3 text-sm">
             <Globe2 className="size-5 shrink-0 text-amber-500" />
-            <p className="text-muted">We source quality products directly from China. Typical lead time: <b className="text-fg">7–21 days</b>. Get a full landed-cost quote — no commitment.</p>
+            <p className="text-muted">We source quality products for you. Typical lead time: <b className="text-fg">7–21 days</b>. Get a full landed-cost quote — no commitment.</p>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Your name" error={errors.name}><input className="input" value={form.name} onChange={set('name')} /></Field>
             <Field label="Phone / WhatsApp" error={errors.phone}><input className="input" inputMode="tel" placeholder="07XX XXX XXX" value={form.phone} onChange={set('phone')} /></Field>
           </div>
           <Field label="What do you want imported?" error={errors.item}>
-            <input className="input" placeholder="e.g. Google Pixel 9 Pro 256GB, Obsidian" value={form.item} onChange={set('item')} />
+            <input className="input" placeholder="e.g. Mini camera, black" value={form.item} onChange={set('item')} />
           </Field>
-          <Field label="Product link (optional)"><input className="input" type="url" placeholder="https://amazon.com/…" value={form.link} onChange={set('link')} /></Field>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Budget (KES, optional)"><input className="input" type="number" min="0" inputMode="numeric" value={form.budget} onChange={set('budget')} /></Field>
-            <Field label="Preferred source">
-              <select className="input" value={form.origin} onChange={set('origin')}>{ORIGINS.map((o) => <option key={o}>{o}</option>)}</select>
-            </Field>
-          </div>
-          <Field label="Extra details (optional)"><textarea className="input min-h-[70px]" value={form.notes} onChange={set('notes')} placeholder="Colour, storage, condition, deadline…" /></Field>
+          <Field label="Product link (optional)"><input className="input" type="url" placeholder="https://…" value={form.link} onChange={set('link')} /></Field>
+          <Field label="Budget (KES, optional)"><input className="input" type="number" min="0" inputMode="numeric" value={form.budget} onChange={set('budget')} /></Field>
+          <Field label="Extra details (optional)"><textarea className="input min-h-[70px]" value={form.notes} onChange={set('notes')} placeholder="Colour, size, quantity, deadline…" /></Field>
           {errors.submit && <p className="text-sm text-red-500" role="alert">{errors.submit}</p>}
           <Button type="submit" className="w-full py-3" disabled={busy}><Send className="size-4" /> {busy ? 'Sending…' : 'Send import request'}</Button>
         </form>

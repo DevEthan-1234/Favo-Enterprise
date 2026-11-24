@@ -6,7 +6,7 @@ const PROPS = [
   { icon: ShieldCheck, title: 'Quality Checked', text: 'Every item checked before delivery' },
   { icon: Smartphone, title: 'Pay via M-Pesa', text: `Send Money to ${BRAND.mpesaDisplay}` },
   { icon: Truck, title: 'Countrywide Delivery', text: 'Nairobi same-day, upcountry 24–48h' },
-  { icon: Globe2, title: 'Direct from China', text: 'We import what you need on order' },
+  { icon: Globe2, title: 'Order on Request', text: "Can't find it? We'll get it for you" },
 ];
 
 /** Gold ribbon swooshes echoing the brand artwork. Purely decorative. */
@@ -52,7 +52,7 @@ export default function Hero({ onImport, onChat }) {
             Electronics at prices <span className="wordmark text-gold pr-1">you dream of</span>
           </h1>
           <p className="mt-4 text-base sm:text-lg text-muted max-w-xl">
-            All our products come straight from China: brand new, quality checked and at great prices. {BRAND.services}
+            Brand new, quality checked products at great prices. {BRAND.services}
           </p>
 
           <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -93,7 +93,7 @@ export default function Hero({ onImport, onChat }) {
             <span className="bg-gold grid size-12 shrink-0 place-items-center rounded-2xl text-slate-950"><Globe2 className="size-6" /></span>
             <div>
               <h2 className="font-display text-xl font-bold">Can't find it? We'll import it ✈️</h2>
-              <p className="text-sm text-muted mt-1">Tell us what you want from China. We source it, ship it and deliver it to your door.</p>
+              <p className="text-sm text-muted mt-1">Tell us what you want. We source it, ship it and deliver it to your door.</p>
             </div>
           </div>
           <button onClick={onImport} className="bg-gold shrink-0 rounded-2xl px-5 py-3 font-semibold text-slate-950 transition hover:brightness-110 hover:scale-[1.03] active:scale-95">

@@ -108,7 +108,7 @@ export default function Catalog({ onQuickView, onAdd, onImport }) {
         <div className="py-20 text-center">
           <SearchX className="mx-auto size-12 text-muted" />
           <p className="mt-4 font-semibold">No products match “{query || 'this section'}”</p>
-          <p className="text-sm text-muted mt-1">We can still get it for you from abroad.</p>
+          <p className="text-sm text-muted mt-1">We can still get it for you.</p>
           <button onClick={onImport} className="mt-5 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-amber-400">Request Custom Import</button>
         </div>
       ) : grouped ? (
