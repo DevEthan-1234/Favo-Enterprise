@@ -5,7 +5,7 @@ import { Button, Field, Modal } from '../components/ui.jsx';
 import { cx, kes } from '../lib/utils.js';
 
 export const EXPENSE_CATEGORIES = [
-  { key: 'stock', label: 'Stock / products bought', icon: Boxes },
+  { key: 'stock', label: 'Stock / products bought', icon: Boxes, hint: 'Not taken off profit again: product cost is counted when items sell.' },
   { key: 'transport', label: 'Transport & delivery', icon: Truck },
   { key: 'rent', label: 'Rent', icon: Building2 },
   { key: 'packaging', label: 'Packaging', icon: Package },
@@ -47,7 +47,7 @@ export default function ExpensesPanel({ list, periodName, notify }) {
       <div className="p-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-semibold">Expenses · {periodName}</p>
-          <p className="text-xs text-muted">Money spent on transport, stock, rent and more. Taken away from your revenue to give your profit.</p>
+          <p className="text-xs text-muted">Money spent on transport, rent, packaging and more is taken off your profit. Stock you buy is listed here too, but its cost is counted through the cost price of each product when it sells.</p>
         </div>
         <Button onClick={() => setEditing({})} disabled={!!expensesError}><Plus className="size-4" /> Add expense</Button>
       </div>
@@ -171,6 +171,7 @@ function ExpenseForm({ expense, onClose, notify }) {
               </button>
             ))}
           </div>
+          {catOf(form.category).hint && <p className="mt-2 text-xs text-muted">{catOf(form.category).hint}</p>}
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Date"><input className="input" type="date" value={form.spentOn} max={todayStr()} onChange={(e) => setForm((f) => ({ ...f, spentOn: e.target.value }))} /></Field>

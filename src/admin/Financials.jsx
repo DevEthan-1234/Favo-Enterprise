@@ -31,7 +31,8 @@ function summarize(list) {
   const deliveryFees = list.reduce((s, o) => s + (o.deliveryFee || 0), 0);
   const units = list.reduce((s, o) => s + o.items.reduce((a, i) => a + i.qty, 0), 0);
   const shop = list.filter((o) => o.channel === 'walk_in').length;
-  return { shop, revenue, profit, deliveryFees, units, count: list.length, aov: list.length ? revenue / list.length : 0, margin: revenue ? (profit / revenue) * 100 : 0 };
+  const noCost = list.reduce((s, o) => s + o.items.filter((i) => !i.costPrice).reduce((a, i) => a + i.qty, 0), 0);
+  return { shop, noCost, cost: revenue - profit, revenue, profit, deliveryFees, units, count: list.length, aov: list.length ? revenue / list.length : 0, margin: revenue ? (profit / revenue) * 100 : 0 };
 }
 
 export default function Financials({ onGoto, notify }) {
@@ -66,9 +67,14 @@ export default function Financials({ onGoto, notify }) {
 
   // Expenses use their own date (YYYY-MM-DD), so the month is the first 7 characters.
   const periodExpenses = useMemo(() => expenses.filter((e) => period === 'all' || e.spentOn.slice(0, 7) === period), [expenses, period]);
-  const spent = periodExpenses.reduce((s, e) => s + e.amount, 0);
-  const prevSpent = period === 'all' ? null : expenses.filter((e) => e.spentOn.slice(0, 7) === prevKey(period)).reduce((s, e) => s + e.amount, 0);
-  const profit = stats.revenue - spent;
+  // Stock purchases are not subtracted again: their cost is counted through each product's cost price when it sells.
+  const running = (list) => list.filter((e) => e.category !== 'stock').reduce((s, e) => s + e.amount, 0);
+  const spent = running(periodExpenses);
+  const stockBought = periodExpenses.filter((e) => e.category === 'stock').reduce((s, e) => s + e.amount, 0);
+  const prevSpent = period === 'all' ? null : running(expenses.filter((e) => e.spentOn.slice(0, 7) === prevKey(period)));
+  // Profit = money paid by customers − cost of the products sold − expenses
+  const profit = stats.revenue - stats.cost - spent;
+  const prevProfit = prev && prevSpent != null ? prev.revenue - prev.cost - prevSpent : null;
 
   // Bars: one per day for a month, one per month for "All time".
   const bars = useMemo(() => {
@@ -134,7 +140,7 @@ export default function Financials({ onGoto, notify }) {
     if (periodExpenses.length) {
       rows.push([], ['EXPENSES'], ['Date', 'Category', 'Note', 'Amount (KES)']);
       for (const e of periodExpenses) rows.push([e.spentOn, EXPENSE_CATEGORIES.find((c) => c.key === e.category)?.label || e.category, e.note, e.amount]);
-      rows.push([], ['Revenue', stats.revenue], ['Expenses', spent], ['Profit (revenue − expenses)', profit]);
+      rows.push([], ['Money paid by customers', stats.revenue], ['Cost of products sold', stats.cost], ['Expenses (excluding stock bought)', spent], ['Profit', profit], ['Stock bought (not in profit)', stockBought]);
     }
     const blob = new Blob(['﻿' + rows.map((r) => r.map(esc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -214,10 +220,26 @@ export default function Financials({ onGoto, notify }) {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Kpi icon={Banknote} label={`Revenue · ${periodName}`} value={kes(stats.revenue)} sub={`+ ${kes(stats.deliveryFees)} delivery fees`} change={prev && pct(stats.revenue, prev.revenue)} tone="amber" />
-        <Kpi icon={Wallet} label="Expenses" value={kes(spent)} sub={`${periodExpenses.length} expense${periodExpenses.length === 1 ? '' : 's'} recorded`} change={prevSpent != null ? pct(spent, prevSpent) : null} invert tone="red" />
-        <Kpi icon={TrendingUp} label="Profit" value={<span className={profit < 0 ? 'text-red-500' : 'text-emerald-500'}>{profit < 0 ? '− ' : ''}{kes(Math.abs(profit))}</span>} sub="Revenue − expenses" change={prev && prevSpent != null ? pct(profit, prev.revenue - prevSpent) : null} tone="emerald" />
+        <Kpi icon={Wallet} label="Expenses" value={kes(spent)} sub={stockBought ? `+ ${kes(stockBought)} stock bought (not in profit)` : `${periodExpenses.length} expense${periodExpenses.length === 1 ? '' : 's'} recorded`} change={prevSpent != null ? pct(spent, prevSpent) : null} invert tone="red" />
+        <Kpi icon={TrendingUp} label="Profit" value={<span className={profit < 0 ? 'text-red-500' : 'text-emerald-500'}>{profit < 0 ? '− ' : ''}{kes(Math.abs(profit))}</span>} sub="Sales − product cost − expenses" change={prevProfit != null ? pct(profit, prevProfit) : null} tone="emerald" />
         <Kpi icon={ShoppingCart} label="Orders paid" value={stats.count.toLocaleString()} sub={`${stats.units} item${stats.units === 1 ? '' : 's'} · ${stats.shop} in shop · avg ${kes(stats.aov)}`} change={prev && pct(stats.count, prev.count)} tone="sky" />
       </div>
+      <div className="mt-3 glass rounded-2xl px-4 py-3 text-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="text-muted">How profit is worked out:</span>
+        <span className="font-semibold">{kes(stats.revenue)}</span><span className="text-muted">paid by customers</span>
+        <span className="text-muted">−</span>
+        <span className="font-semibold">{kes(stats.cost)}</span><span className="text-muted">product cost</span>
+        <span className="text-muted">−</span>
+        <span className="font-semibold">{kes(spent)}</span><span className="text-muted">expenses</span>
+        <span className="text-muted">=</span>
+        <span className={cx('font-bold', profit < 0 ? 'text-red-500' : 'text-emerald-500')}>{profit < 0 ? '− ' : ''}{kes(Math.abs(profit))}</span>
+      </div>
+      {stats.noCost > 0 && (
+        <p className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="size-4 shrink-0" />
+          {stats.noCost} item{stats.noCost > 1 ? 's' : ''} sold had no cost price, so profit may look higher than it is. Add the cost price in Products.
+        </p>
+      )}
       {prev && <p className="mt-2 text-[11px] text-muted">Arrows compare with {monthLabel(prevKey(period))}.</p>}
 
       <div className="mt-6 grid lg:grid-cols-5 gap-4">
@@ -286,7 +308,7 @@ export default function Financials({ onGoto, notify }) {
                 <th className="px-5 py-3 font-semibold">Product</th>
                 <th className="px-3 py-3 font-semibold text-right">Qty sold</th>
                 <th className="px-3 py-3 font-semibold text-right">Revenue</th>
-                <th className="px-5 py-3 font-semibold text-right" title="Selling price minus the cost price you entered for each product">Margin (est.)</th>
+                <th className="px-5 py-3 font-semibold text-right" title="Selling price minus the cost price you entered for each product">Profit before expenses</th>
               </tr>
             </thead>
             <tbody>
