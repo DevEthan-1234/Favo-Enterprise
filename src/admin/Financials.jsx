@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Banknote, BadgeCheck, CalendarDays, Download, Package, Receipt, ShoppingCart, Store, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Banknote, BadgeCheck, CalendarDays, Download, Package, Receipt, ShoppingCart, Store, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
 import { Badge, Button, PageHeader, SafeImage } from '../components/ui.jsx';
 import RecordSale from './RecordSale.jsx';
+import ExpensesPanel, { EXPENSE_CATEGORIES } from './Expenses.jsx';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '../data/seed.js';
 import { cx, fmtDate, kes } from '../lib/utils.js';
 
@@ -34,7 +35,7 @@ function summarize(list) {
 }
 
 export default function Financials({ onGoto, notify }) {
-  const { orders: allOrders, sections, products } = useStore();
+  const { orders: allOrders, sections, products, expenses } = useStore();
   const thisMonth = monthKey(Date.now());
   const [period, setPeriod] = useState(thisMonth); // 'all' or 'YYYY-MM'
   const [recording, setRecording] = useState(false);
@@ -62,6 +63,12 @@ export default function Financials({ onGoto, notify }) {
     () => (period === 'all' ? null : summarize(paid.filter((o) => monthKey(o.createdAt) === prevKey(period)))),
     [paid, period]
   );
+
+  // Expenses use their own date (YYYY-MM-DD), so the month is the first 7 characters.
+  const periodExpenses = useMemo(() => expenses.filter((e) => period === 'all' || e.spentOn.slice(0, 7) === period), [expenses, period]);
+  const spent = periodExpenses.reduce((s, e) => s + e.amount, 0);
+  const prevSpent = period === 'all' ? null : expenses.filter((e) => e.spentOn.slice(0, 7) === prevKey(period)).reduce((s, e) => s + e.amount, 0);
+  const profit = stats.revenue - spent;
 
   // Bars: one per day for a month, one per month for "All time".
   const bars = useMemo(() => {
@@ -123,6 +130,11 @@ export default function Financials({ onGoto, notify }) {
         o.items.map((i) => `${i.qty} x ${i.title}`).join('; '), o.total,
         o.items.reduce((a, i) => a + (i.price - (i.costPrice || 0)) * i.qty, 0), o.deliveryFee ?? '', o.status,
       ]);
+    }
+    if (periodExpenses.length) {
+      rows.push([], ['EXPENSES'], ['Date', 'Category', 'Note', 'Amount (KES)']);
+      for (const e of periodExpenses) rows.push([e.spentOn, EXPENSE_CATEGORIES.find((c) => c.key === e.category)?.label || e.category, e.note, e.amount]);
+      rows.push([], ['Revenue', stats.revenue], ['Expenses', spent], ['Profit (revenue − expenses)', profit]);
     }
     const blob = new Blob(['﻿' + rows.map((r) => r.map(esc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -202,9 +214,9 @@ export default function Financials({ onGoto, notify }) {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Kpi icon={Banknote} label={`Revenue · ${periodName}`} value={kes(stats.revenue)} sub={`+ ${kes(stats.deliveryFees)} delivery fees`} change={prev && pct(stats.revenue, prev.revenue)} tone="amber" />
-        <Kpi icon={TrendingUp} label="Net Profit (est.)" value={kes(stats.profit)} sub={`${stats.margin.toFixed(1)}% margin`} change={prev && pct(stats.profit, prev.profit)} tone="emerald" />
-        <Kpi icon={ShoppingCart} label="Orders paid" value={stats.count.toLocaleString()} sub={`${stats.units} item${stats.units === 1 ? '' : 's'} sold · ${stats.shop} in shop`} change={prev && pct(stats.count, prev.count)} tone="sky" />
-        <Kpi icon={Receipt} label="Avg. Order Value" value={kes(stats.aov)} sub="per paid order" change={prev && pct(stats.aov, prev.aov)} tone="violet" />
+        <Kpi icon={Wallet} label="Expenses" value={kes(spent)} sub={`${periodExpenses.length} expense${periodExpenses.length === 1 ? '' : 's'} recorded`} change={prevSpent != null ? pct(spent, prevSpent) : null} invert tone="red" />
+        <Kpi icon={TrendingUp} label="Profit" value={<span className={profit < 0 ? 'text-red-500' : 'text-emerald-500'}>{profit < 0 ? '− ' : ''}{kes(Math.abs(profit))}</span>} sub="Revenue − expenses" change={prev && prevSpent != null ? pct(profit, prev.revenue - prevSpent) : null} tone="emerald" />
+        <Kpi icon={ShoppingCart} label="Orders paid" value={stats.count.toLocaleString()} sub={`${stats.units} item${stats.units === 1 ? '' : 's'} · ${stats.shop} in shop · avg ${kes(stats.aov)}`} change={prev && pct(stats.count, prev.count)} tone="sky" />
       </div>
       {prev && <p className="mt-2 text-[11px] text-muted">Arrows compare with {monthLabel(prevKey(period))}.</p>}
 
@@ -274,7 +286,7 @@ export default function Financials({ onGoto, notify }) {
                 <th className="px-5 py-3 font-semibold">Product</th>
                 <th className="px-3 py-3 font-semibold text-right">Qty sold</th>
                 <th className="px-3 py-3 font-semibold text-right">Revenue</th>
-                <th className="px-5 py-3 font-semibold text-right">Profit</th>
+                <th className="px-5 py-3 font-semibold text-right" title="Selling price minus the cost price you entered for each product">Margin (est.)</th>
               </tr>
             </thead>
             <tbody>
@@ -309,6 +321,8 @@ export default function Financials({ onGoto, notify }) {
           </table>
         </div>
       </div>
+
+      <ExpensesPanel list={periodExpenses} periodName={periodName} notify={notify} />
 
       <div className="mt-6 glass rounded-3xl overflow-hidden">
         <div className="p-5 flex items-center justify-between">
@@ -360,18 +374,19 @@ export default function Financials({ onGoto, notify }) {
 /** % change vs previous month, or null when there is nothing to compare with. */
 function pct(now, before) {
   if (!before) return null;
-  return ((now - before) / before) * 100;
+  return ((now - before) / Math.abs(before)) * 100;
 }
 
-function Kpi({ icon: Icon, label, value, sub, tone, change }) {
-  const tones = { amber: 'text-amber-500 bg-amber-500/15', emerald: 'text-emerald-500 bg-emerald-500/15', sky: 'text-sky-500 bg-sky-500/15', violet: 'text-violet-400 bg-violet-500/15' };
+function Kpi({ icon: Icon, label, value, sub, tone, change, invert = false }) {
+  const tones = { red: 'text-red-500 bg-red-500/15', amber: 'text-amber-500 bg-amber-500/15', emerald: 'text-emerald-500 bg-emerald-500/15', sky: 'text-sky-500 bg-sky-500/15', violet: 'text-violet-400 bg-violet-500/15' };
   const up = change != null && change >= 0;
+  const good = invert ? !up : up; // for expenses, going up is bad
   return (
     <div className="glass rounded-3xl p-4 sm:p-5 transition hover:-translate-y-0.5">
       <div className="flex items-start justify-between gap-2">
         <span className={cx('grid size-9 place-items-center rounded-xl', tones[tone])}><Icon className="size-4.5" /></span>
         {change != null && (
-          <span className={cx('inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold', up ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-500')}>
+          <span className={cx('inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold', good ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-500')}>
             {up ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
             {Math.abs(change).toFixed(0)}%
           </span>

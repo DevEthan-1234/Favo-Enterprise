@@ -48,6 +48,9 @@ const toOrder = (r) => ({
   channel: r.channel || 'online', paymentMethod: r.payment_method || 'mpesa', deliveryFee: r.delivery_fee, items: r.items || [], total: r.total,
   createdAt: ts(r.created_at),
 });
+const toExpense = (r) => ({
+  id: r.id, spentOn: r.spent_on, category: r.category, amount: r.amount, note: r.note, createdAt: ts(r.created_at),
+});
 const toConversation = (r) => ({
   id: r.id, name: r.name, phone: r.phone, unreadAdmin: r.unread_admin, unreadCustomer: r.unread_customer,
   updatedAt: ts(r.updated_at),
@@ -77,6 +80,8 @@ export function StoreProvider({ children }) {
   const [rawProducts, setRawProducts] = useState([]);
   const [costs, setCosts] = useState({});
   const [orders, setOrders] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [expensesError, setExpensesError] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -109,11 +114,14 @@ export function StoreProvider({ children }) {
   }, []);
 
   const loadAdmin = useCallback(async () => {
-    const [c, o, conv] = await Promise.all([
+    const [c, o, conv, ex] = await Promise.all([
       supabase.from('product_costs').select('*'),
       supabase.from('orders').select('*').order('created_at', { ascending: false }),
       supabase.from('conversations').select('*, messages(*)').order('updated_at', { ascending: false }),
+      supabase.from('expenses').select('*').order('spent_on', { ascending: false }).order('created_at', { ascending: false }),
     ]);
+    if (!ex.error) { setExpenses(ex.data.map(toExpense)); setExpensesError(null); }
+    else setExpensesError(/expenses/i.test(ex.error.message || '') ? 'Expenses are not set up yet. Run 0007_expenses.sql in Supabase.' : friendlyError(ex.error));
     if (!c.error) setCosts(Object.fromEntries(c.data.map((r) => [r.product_id, r.cost_price])));
     if (!o.error) setOrders(o.data.map(toOrder));
     if (!conv.error) setConversations(conv.data.map(toConversation));
@@ -167,6 +175,7 @@ export function StoreProvider({ children }) {
     if (!isAdmin) {
       setCosts({});
       setOrders([]);
+      setExpenses([]);
       setConversations([]);
       return;
     }
@@ -177,6 +186,7 @@ export function StoreProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_costs' }, refreshAdmin)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, refreshAdmin)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, refreshAdmin)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, refreshAdmin)
       .subscribe();
     const onFocus = () => document.visibilityState === 'visible' && refreshAdmin();
     document.addEventListener('visibilitychange', onFocus);
@@ -389,6 +399,23 @@ export function StoreProvider({ children }) {
     return ok(data);
   }, [loadAdmin, loadCatalog]);
 
+  /* ---------------- Expenses (admin) ---------------- */
+  const saveExpense = useCallback(async ({ id, spentOn, category, amount, note }) => {
+    const row = { spent_on: spentOn, category, amount: Math.round(Number(amount)), note: (note || '').trim() };
+    const q = id ? supabase.from('expenses').update(row).eq('id', id) : supabase.from('expenses').insert(row);
+    const { error } = await q;
+    if (error) return fail(error);
+    await loadAdmin();
+    return ok(null);
+  }, [loadAdmin]);
+
+  const deleteExpense = useCallback(async (id) => {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (error) { await loadAdmin(); return fail(error); }
+    return ok(null);
+  }, [loadAdmin]);
+
   /* ---------------- Customer chat ---------------- */
   const refreshCustomerConversation = useCallback(async () => {
     if (!chatIdentity?.token) { setCustomerConversation(null); return; }
@@ -447,6 +474,7 @@ export function StoreProvider({ children }) {
     saveProduct, uploadProductImage, deleteProduct, adjustStock,
     addToCart, setCartQty, clearCart,
     placeOrder, trackOrders, updateOrder, reviewPayment, recordSale,
+    expenses, expensesError, saveExpense, deleteExpense,
     sendCustomerMessage, refreshCustomerConversation, markCustomerRead, setChatIdentity,
     sendAdminReply, markAdminRead, deleteConversation,
   }), [
@@ -454,6 +482,7 @@ export function StoreProvider({ children }) {
     sections, products, orders, conversations, cart, cartLines, chatIdentity, myOrders, customerConversation,
     addSection, renameSection, moveSection, deleteSection, saveProduct, uploadProductImage, deleteProduct, adjustStock,
     addToCart, setCartQty, clearCart, placeOrder, trackOrders, updateOrder, reviewPayment, recordSale,
+    expenses, expensesError, saveExpense, deleteExpense,
     sendCustomerMessage, refreshCustomerConversation, markCustomerRead, setChatIdentity,
     sendAdminReply, markAdminRead, deleteConversation,
   ]);
