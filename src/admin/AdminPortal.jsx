@@ -61,7 +61,7 @@ export default function AdminPortal({ onLogout, theme, toggleTheme, notify }) {
         </header>
 
         <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-16">
-          {tab === 'overview' && <Financials onGoto={setTab} />}
+          {tab === 'overview' && <Financials onGoto={setTab} notify={notify} />}
           {tab === 'orders' && <OrdersHub notify={notify} />}
           {tab === 'inventory' && <Inventory notify={notify} />}
           {tab === 'sections' && <SectionManager notify={notify} />}

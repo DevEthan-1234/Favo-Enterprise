@@ -44,7 +44,8 @@ const toProduct = (r) => ({
 });
 const toOrder = (r) => ({
   id: r.id, mpesaCode: r.mpesa_code, customerName: r.customer_name, phone: r.phone, location: r.location,
-  notes: r.notes, status: r.status, paymentStatus: r.payment_status || 'verified', deliveryFee: r.delivery_fee, items: r.items || [], total: r.total,
+  notes: r.notes, status: r.status, paymentStatus: r.payment_status || 'verified',
+  channel: r.channel || 'online', paymentMethod: r.payment_method || 'mpesa', deliveryFee: r.delivery_fee, items: r.items || [], total: r.total,
   createdAt: ts(r.created_at),
 });
 const toConversation = (r) => ({
@@ -380,6 +381,14 @@ export function StoreProvider({ children }) {
     return ok(null);
   }, [loadAdmin, loadCatalog]);
 
+  /** Admin: record a sale made in the shop. Saved as a paid, delivered order and taken out of stock. */
+  const recordSale = useCallback(async (sale) => {
+    const { data, error } = await supabase.rpc('admin_record_sale', { p: sale });
+    if (error) return fail(error);
+    await Promise.all([loadAdmin(), loadCatalog()]);
+    return ok(data);
+  }, [loadAdmin, loadCatalog]);
+
   /* ---------------- Customer chat ---------------- */
   const refreshCustomerConversation = useCallback(async () => {
     if (!chatIdentity?.token) { setCustomerConversation(null); return; }
@@ -437,14 +446,14 @@ export function StoreProvider({ children }) {
     addSection, renameSection, moveSection, deleteSection,
     saveProduct, uploadProductImage, deleteProduct, adjustStock,
     addToCart, setCartQty, clearCart,
-    placeOrder, trackOrders, updateOrder, reviewPayment,
+    placeOrder, trackOrders, updateOrder, reviewPayment, recordSale,
     sendCustomerMessage, refreshCustomerConversation, markCustomerRead, setChatIdentity,
     sendAdminReply, markAdminRead, deleteConversation,
   }), [
     ready, loadError, loadCatalog, authReady, isAdmin, login, logout,
     sections, products, orders, conversations, cart, cartLines, chatIdentity, myOrders, customerConversation,
     addSection, renameSection, moveSection, deleteSection, saveProduct, uploadProductImage, deleteProduct, adjustStock,
-    addToCart, setCartQty, clearCart, placeOrder, trackOrders, updateOrder, reviewPayment,
+    addToCart, setCartQty, clearCart, placeOrder, trackOrders, updateOrder, reviewPayment, recordSale,
     sendCustomerMessage, refreshCustomerConversation, markCustomerRead, setChatIdentity,
     sendAdminReply, markAdminRead, deleteConversation,
   ]);

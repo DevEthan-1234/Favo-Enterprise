@@ -64,12 +64,12 @@ td,th{padding:8px 4px;border-bottom:1px solid #e2e8f0;font-size:14px}th{text-ali
 .row{display:flex;justify-content:space-between;margin:6px 0;font-size:14px}</style></head><body>
 <h1>${esc(BRAND.name)}</h1><div class="muted">Electronics at prices you dream of · WhatsApp ${esc(BRAND.whatsappDisplay)}</div>
 <hr style="border:none;border-top:1px dashed #cbd5e1;margin:18px 0">
-<div class="code">M-PESA Ref: ${esc(order.mpesaCode)}</div>
+<div class="code">${order.mpesaCode ? `M-PESA Ref: ${esc(order.mpesaCode)}` : 'Paid in cash'}</div>
 <div class="row"><span>Payment</span><b>${order.paymentStatus === 'unverified' ? 'Awaiting confirmation' : order.paymentStatus === 'rejected' ? 'Not received (order cancelled)' : 'Confirmed'}</b></div>
 <div class="row"><span>Order No.</span><b>${esc(order.id)}</b></div>
 <div class="row"><span>Date</span><span>${esc(fmtDate(order.createdAt))}</span></div>
 <div class="row"><span>Customer</span><span>${esc(order.customerName)}</span></div>
-<div class="row"><span>Phone</span><span>${esc(order.phone)}</span></div>
+${order.phone ? `<div class="row"><span>Phone</span><span>${esc(order.phone)}</span></div>` : ''}
 <div class="row"><span>Delivery to</span><span>${esc(order.location)}</span></div>
 <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="row total"><span>${order.paymentStatus === 'verified' || !order.paymentStatus ? 'Total Paid' : 'Total'}</span><span>${kes(order.total)}</span></div>

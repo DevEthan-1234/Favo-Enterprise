@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Banknote, BadgeCheck, CalendarDays, Download, Package, Receipt, ShoppingCart, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Banknote, BadgeCheck, CalendarDays, Download, Package, Receipt, ShoppingCart, Store, TrendingDown, TrendingUp } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
-import { Badge, PageHeader, SafeImage } from '../components/ui.jsx';
+import { Badge, Button, PageHeader, SafeImage } from '../components/ui.jsx';
+import RecordSale from './RecordSale.jsx';
 import { ORDER_STATUSES, PAYMENT_STATUSES } from '../data/seed.js';
 import { cx, fmtDate, kes } from '../lib/utils.js';
 
@@ -28,13 +29,15 @@ function summarize(list) {
   const profit = list.reduce((s, o) => s + o.items.reduce((a, i) => a + (i.price - (i.costPrice || 0)) * i.qty, 0), 0);
   const deliveryFees = list.reduce((s, o) => s + (o.deliveryFee || 0), 0);
   const units = list.reduce((s, o) => s + o.items.reduce((a, i) => a + i.qty, 0), 0);
-  return { revenue, profit, deliveryFees, units, count: list.length, aov: list.length ? revenue / list.length : 0, margin: revenue ? (profit / revenue) * 100 : 0 };
+  const shop = list.filter((o) => o.channel === 'walk_in').length;
+  return { shop, revenue, profit, deliveryFees, units, count: list.length, aov: list.length ? revenue / list.length : 0, margin: revenue ? (profit / revenue) * 100 : 0 };
 }
 
-export default function Financials({ onGoto }) {
+export default function Financials({ onGoto, notify }) {
   const { orders: allOrders, sections, products } = useStore();
   const thisMonth = monthKey(Date.now());
   const [period, setPeriod] = useState(thisMonth); // 'all' or 'YYYY-MM'
+  const [recording, setRecording] = useState(false);
 
   // Only payments the admin has confirmed count as sales.
   const paid = useMemo(() => allOrders.filter((o) => o.paymentStatus === 'verified'), [allOrders]);
@@ -113,10 +116,10 @@ export default function Financials({ onGoto }) {
 
   const exportCsv = () => {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['Date', 'Order', 'M-Pesa code', 'Payment', 'Customer', 'Phone', 'Location', 'Items', 'Amount (KES)', 'Profit (KES)', 'Delivery fee (KES)', 'Status']];
+    const rows = [['Date', 'Order', 'Sold', 'M-Pesa code', 'Payment', 'Customer', 'Phone', 'Location', 'Items', 'Amount (KES)', 'Profit (KES)', 'Delivery fee (KES)', 'Status']];
     for (const o of ledger) {
       rows.push([
-        fmtDate(o.createdAt), o.id, o.mpesaCode, PAYMENT_STATUSES[o.paymentStatus]?.admin || 'Paid', o.customerName, o.phone, o.location,
+        fmtDate(o.createdAt), o.id, o.channel === 'walk_in' ? 'In shop' : 'Online', o.mpesaCode || (o.paymentMethod === 'cash' ? 'Cash' : ''), PAYMENT_STATUSES[o.paymentStatus]?.admin || 'Paid', o.customerName, o.phone, o.location,
         o.items.map((i) => `${i.qty} x ${i.title}`).join('; '), o.total,
         o.items.reduce((a, i) => a + (i.price - (i.costPrice || 0)) * i.qty, 0), o.deliveryFee ?? '', o.status,
       ]);
@@ -138,11 +141,15 @@ export default function Financials({ onGoto }) {
         title="Financial Overview"
         subtitle="Sales from confirmed M-Pesa payments. Pick a month to see what was sold."
         action={
+          <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setRecording(true)}><Store className="size-4" /> Record shop sale</Button>
           <button onClick={exportCsv} disabled={!ledger.length} className="inline-flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-muted transition hover:text-fg hover:border-amber-500/50 disabled:opacity-40">
             <Download className="size-4" /> Download {period === 'all' ? 'all sales' : monthLabel(period, { month: 'short', year: 'numeric' })} (Excel)
           </button>
+          </div>
         }
       />
+      <RecordSale open={recording} onClose={() => setRecording(false)} notify={notify} />
 
       {(lowStock.length > 0 || pendingFee > 0 || toCheck.length > 0) && (
         <div className="mb-6 grid sm:grid-cols-2 gap-3">
@@ -196,7 +203,7 @@ export default function Financials({ onGoto }) {
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Kpi icon={Banknote} label={`Revenue · ${periodName}`} value={kes(stats.revenue)} sub={`+ ${kes(stats.deliveryFees)} delivery fees`} change={prev && pct(stats.revenue, prev.revenue)} tone="amber" />
         <Kpi icon={TrendingUp} label="Net Profit (est.)" value={kes(stats.profit)} sub={`${stats.margin.toFixed(1)}% margin`} change={prev && pct(stats.profit, prev.profit)} tone="emerald" />
-        <Kpi icon={ShoppingCart} label="Orders paid" value={stats.count.toLocaleString()} sub={`${stats.units} item${stats.units === 1 ? '' : 's'} sold`} change={prev && pct(stats.count, prev.count)} tone="sky" />
+        <Kpi icon={ShoppingCart} label="Orders paid" value={stats.count.toLocaleString()} sub={`${stats.units} item${stats.units === 1 ? '' : 's'} sold · ${stats.shop} in shop`} change={prev && pct(stats.count, prev.count)} tone="sky" />
         <Kpi icon={Receipt} label="Avg. Order Value" value={kes(stats.aov)} sub="per paid order" change={prev && pct(stats.aov, prev.aov)} tone="violet" />
       </div>
       {prev && <p className="mt-2 text-[11px] text-muted">Arrows compare with {monthLabel(prevKey(period))}.</p>}
@@ -327,8 +334,11 @@ export default function Financials({ onGoto }) {
             <tbody>
               {ledger.map((o) => (
                 <tr key={o.id} className="border-b border-line last:border-0 hover:bg-bgsoft/40">
-                  <td className="px-5 py-3 font-mono font-bold text-emerald-500 tracking-wide">{o.mpesaCode}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">{o.phone}<span className="block text-xs text-muted">{o.customerName}</span></td>
+                  <td className="px-5 py-3">
+                    <span className="font-mono font-bold text-emerald-500 tracking-wide">{o.mpesaCode || 'CASH'}</span>
+                    {o.channel === 'walk_in' && <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted"><Store className="size-3" /> Shop sale</span>}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">{o.phone || '—'}<span className="block text-xs text-muted">{o.customerName}</span></td>
                   <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">{kes(o.total)}</td>
                   <td className="px-3 py-3"><PaymentBadge status={o.paymentStatus} /></td>
                   <td className="px-3 py-3">{o.location}</td>

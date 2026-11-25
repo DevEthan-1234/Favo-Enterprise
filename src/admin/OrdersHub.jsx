@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, Copy, Loader2, MapPin, MessageCircle, Phone, Save, Search, Truck, XCircle } from 'lucide-react';
+import { BadgeCheck, Copy, Loader2, MapPin, MessageCircle, Phone, Save, Search, Store, Truck, XCircle } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
-import { PageHeader } from '../components/ui.jsx';
+import { Badge, Button, PageHeader } from '../components/ui.jsx';
+import RecordSale from './RecordSale.jsx';
 import { BRAND, ORDER_STATUSES } from '../data/seed.js';
 import { cx, fmtDate, kes, waLinkTo } from '../lib/utils.js';
 import { PaymentBadge, StatusBadge } from './Financials.jsx';
@@ -10,27 +11,34 @@ export default function OrdersHub({ notify }) {
   const { orders } = useStore();
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
+  const [recording, setRecording] = useState(false);
 
   const counts = useMemo(() => {
-    const m = { all: orders.length, check: 0, cancelled: 0 };
+    const m = { all: orders.length, check: 0, cancelled: 0, shop: 0 };
     for (const s of ORDER_STATUSES) m[s.key] = 0;
     for (const o of orders) {
       m[o.status] = (m[o.status] || 0) + 1;
       if (o.paymentStatus === 'unverified') m.check += 1;
+      if (o.channel === 'walk_in') m.shop += 1;
     }
     return m;
   }, [orders]);
 
   const list = orders.filter((o) => {
-    if (filter === 'check' ? o.paymentStatus !== 'unverified' : filter !== 'all' && o.status !== filter) return false;
+    if (filter === 'check') { if (o.paymentStatus !== 'unverified') return false; }
+    else if (filter === 'shop') { if (o.channel !== 'walk_in') return false; }
+    else if (filter !== 'all' && o.status !== filter) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return [o.id, o.mpesaCode, o.customerName, o.phone, o.location].some((v) => String(v).toLowerCase().includes(q));
+    return [o.id, o.mpesaCode, o.customerName, o.phone, o.location].some((v) => String(v ?? '').toLowerCase().includes(q));
   });
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Orders & Delivery" subtitle="Confirm M-Pesa payments, set delivery fees, update status and send quotes over WhatsApp." />
+      <PageHeader title="Orders & Delivery" subtitle="Confirm M-Pesa payments, set delivery fees, update status and record sales made in your shop."
+        action={<Button onClick={() => setRecording(true)}><Store className="size-4" /> Record shop sale</Button>}
+      />
+      <RecordSale open={recording} onClose={() => setRecording(false)} notify={notify} />
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1">
@@ -39,7 +47,7 @@ export default function OrdersHub({ notify }) {
         </div>
       </div>
       <div className="mb-5 flex gap-2 overflow-x-auto no-scrollbar">
-        {[{ key: 'all', admin: 'All' }, { key: 'check', admin: 'Check payment' }, ...ORDER_STATUSES, { key: 'cancelled', admin: 'Cancelled' }].map((s) => (
+        {[{ key: 'all', admin: 'All' }, { key: 'check', admin: 'Check payment' }, { key: 'shop', admin: 'Shop sales' }, ...ORDER_STATUSES, { key: 'cancelled', admin: 'Cancelled' }].map((s) => (
           <button key={s.key} onClick={() => setFilter(s.key)} className={cx('shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition', filter === s.key ? 'bg-amber-500 border-amber-500 text-slate-950' : 'border-line text-muted hover:text-fg')}>
             {s.admin} <span className="opacity-60">{counts[s.key]}</span>
           </button>
@@ -64,6 +72,7 @@ function OrderCard({ order: o, notify }) {
   const { updateOrder, reviewPayment } = useStore();
   const [reviewing, setReviewing] = useState(null);
   const cancelled = o.status === 'cancelled';
+  const shop = o.channel === 'walk_in';
   const [fee, setFee] = useState(o.deliveryFee ?? '');
   useEffect(() => setFee(o.deliveryFee ?? ''), [o.deliveryFee]);
   const feeNum = fee === '' ? null : Math.max(0, Number(fee) || 0);
@@ -119,13 +128,13 @@ function OrderCard({ order: o, notify }) {
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-mono font-bold">{o.id}</p>
             <StatusBadge status={o.status} />
-            <PaymentBadge status={o.paymentStatus} />
+            {shop ? <Badge tone="violet"><Store className="size-3" /> Shop sale · {o.paymentMethod === 'cash' ? 'Cash' : 'M-Pesa'}</Badge> : <PaymentBadge status={o.paymentStatus} />}
           </div>
           <p className="text-xs text-muted mt-1">{fmtDate(o.createdAt)}</p>
         </div>
         <div className="text-right">
           <p className="font-display text-lg font-bold text-amber-500">{kes(o.total)}</p>
-          <button onClick={copyCode} className="inline-flex items-center gap-1 font-mono text-xs text-emerald-500 hover:underline"><Copy className="size-3" />{o.mpesaCode}</button>
+          {o.mpesaCode && <button onClick={copyCode} className="inline-flex items-center gap-1 font-mono text-xs text-emerald-500 hover:underline"><Copy className="size-3" />{o.mpesaCode}</button>}
         </div>
       </div>
 
@@ -152,7 +161,7 @@ function OrderCard({ order: o, notify }) {
       <div className="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
         <div className="rounded-2xl bg-bgsoft p-3">
           <p className="font-semibold">{o.customerName}</p>
-          <a href={`tel:${o.phone}`} className="mt-1 flex items-center gap-1.5 text-muted hover:text-amber-500"><Phone className="size-3.5" />{o.phone}</a>
+          {o.phone ? <a href={`tel:${o.phone}`} className="mt-1 flex items-center gap-1.5 text-muted hover:text-amber-500"><Phone className="size-3.5" />{o.phone}</a> : <p className="mt-1 text-xs text-muted">No phone given</p>}
         </div>
         <div className="rounded-2xl bg-bgsoft p-3">
           <p className="flex items-center gap-1.5 font-semibold"><MapPin className="size-3.5 text-amber-500" />{o.location}</p>
@@ -166,7 +175,7 @@ function OrderCard({ order: o, notify }) {
         ))}
       </ul>
 
-      {!cancelled && (<>
+      {!cancelled && !shop && (<>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted">Delivery fee (KES)</span>
