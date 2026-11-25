@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, Copy, Loader2, MapPin, MessageCircle, Phone, Save, Search, Store, Truck, XCircle } from 'lucide-react';
+import { BadgeCheck, Copy, Loader2, MapPin, MessageCircle, Phone, Plus, Save, Search, Store, Truck, XCircle } from 'lucide-react';
 import { useStore } from '../store/StoreContext.jsx';
 import { Badge, Button, PageHeader } from '../components/ui.jsx';
 import RecordSale from './RecordSale.jsx';
+import { EXPENSE_CATEGORIES, ExpenseForm } from './Expenses.jsx';
 import { BRAND, ORDER_STATUSES } from '../data/seed.js';
 import { cx, fmtDate, kes, waLinkTo } from '../lib/utils.js';
 import { PaymentBadge, StatusBadge } from './Financials.jsx';
@@ -69,7 +70,12 @@ export default function OrdersHub({ notify }) {
 }
 
 function OrderCard({ order: o, notify }) {
-  const { updateOrder, reviewPayment } = useStore();
+  const { updateOrder, reviewPayment, expenses, expensesError } = useStore();
+  const [addingCost, setAddingCost] = useState(null);
+  const linked = expenses.filter((e) => e.orderId === o.id);
+  const linkedTotal = linked.reduce((s, e) => s + e.amount, 0);
+  const productCost = o.items.reduce((s, i) => s + (i.costPrice || 0) * i.qty, 0);
+  const orderProfit = o.total + (o.deliveryFee || 0) - productCost - linkedTotal;
   const [reviewing, setReviewing] = useState(null);
   const cancelled = o.status === 'cancelled';
   const shop = o.channel === 'walk_in';
@@ -122,6 +128,7 @@ function OrderCard({ order: o, notify }) {
   };
 
   return (
+    <>
     <div className="glass rounded-3xl p-5 flex flex-col">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -175,6 +182,33 @@ function OrderCard({ order: o, notify }) {
         ))}
       </ul>
 
+      {!cancelled && (
+        <div className="mt-3 rounded-2xl border border-line p-3 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Costs for this order</span>
+            {!expensesError && (
+              <button onClick={() => setAddingCost({ orderId: o.id, category: 'transport' })} className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline">
+                <Plus className="size-3.5" /> Add delivery cost
+              </button>
+            )}
+          </div>
+          {linked.length === 0 && <p className="mt-1 text-xs text-muted">No transport or other costs linked yet.</p>}
+          {linked.map((e) => (
+            <div key={e.id} className="mt-1 flex justify-between gap-2 text-xs">
+              <span className="truncate text-muted">{EXPENSE_CATEGORIES.find((c) => c.key === e.category)?.label || 'Other'}{e.note ? ` · ${e.note}` : ''}</span>
+              <span className="whitespace-nowrap text-red-500">− {kes(e.amount)}</span>
+            </div>
+          ))}
+          <div className="mt-2 flex justify-between gap-2 border-t border-line pt-2 font-semibold">
+            <span>Profit on this order</span>
+            <span className={orderProfit < 0 ? 'text-red-500' : 'text-emerald-500'}>{orderProfit < 0 ? '− ' : ''}{kes(Math.abs(orderProfit))}</span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-muted">
+            {kes(o.total + (o.deliveryFee || 0))} paid{o.deliveryFee ? ` (incl. ${kes(o.deliveryFee)} delivery)` : ''} − {kes(productCost)} product cost − {kes(linkedTotal)} costs
+          </p>
+        </div>
+      )}
+
       {!cancelled && !shop && (<>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <label className="block">
@@ -202,5 +236,8 @@ function OrderCard({ order: o, notify }) {
       </a>
       </>)}
     </div>
+    {/* Outside the blurred card so the modal covers the whole screen. */}
+    <ExpenseForm expense={addingCost} onClose={() => setAddingCost(null)} notify={notify} />
+    </>
   );
 }

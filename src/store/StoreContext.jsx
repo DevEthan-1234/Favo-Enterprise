@@ -49,7 +49,7 @@ const toOrder = (r) => ({
   createdAt: ts(r.created_at),
 });
 const toExpense = (r) => ({
-  id: r.id, spentOn: r.spent_on, category: r.category, amount: r.amount, note: r.note, createdAt: ts(r.created_at),
+  id: r.id, spentOn: r.spent_on, category: r.category, amount: r.amount, note: r.note, orderId: r.order_id || null, createdAt: ts(r.created_at),
 });
 const toConversation = (r) => ({
   id: r.id, name: r.name, phone: r.phone, unreadAdmin: r.unread_admin, unreadCustomer: r.unread_customer,
@@ -400,11 +400,14 @@ export function StoreProvider({ children }) {
   }, [loadAdmin, loadCatalog]);
 
   /* ---------------- Expenses (admin) ---------------- */
-  const saveExpense = useCallback(async ({ id, spentOn, category, amount, note }) => {
-    const row = { spent_on: spentOn, category, amount: Math.round(Number(amount)), note: (note || '').trim() };
+  const saveExpense = useCallback(async ({ id, spentOn, category, amount, note, orderId }) => {
+    const row = { spent_on: spentOn, category, amount: Math.round(Number(amount)), note: (note || '').trim(), order_id: orderId || null };
     const q = id ? supabase.from('expenses').update(row).eq('id', id) : supabase.from('expenses').insert(row);
     const { error } = await q;
-    if (error) return fail(error);
+    if (error) {
+      if (/order_id/.test(error.message || '')) return { data: null, error: 'Linking expenses to orders is not set up yet. Run 0008_expense_orders.sql in Supabase.' };
+      return fail(error);
+    }
     await loadAdmin();
     return ok(null);
   }, [loadAdmin]);

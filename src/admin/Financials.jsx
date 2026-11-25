@@ -67,14 +67,14 @@ export default function Financials({ onGoto, notify }) {
 
   // Expenses use their own date (YYYY-MM-DD), so the month is the first 7 characters.
   const periodExpenses = useMemo(() => expenses.filter((e) => period === 'all' || e.spentOn.slice(0, 7) === period), [expenses, period]);
-  // Stock purchases are not subtracted again: their cost is counted through each product's cost price when it sells.
-  const running = (list) => list.filter((e) => e.category !== 'stock').reduce((s, e) => s + e.amount, 0);
-  const spent = running(periodExpenses);
-  const stockBought = periodExpenses.filter((e) => e.category === 'stock').reduce((s, e) => s + e.amount, 0);
-  const prevSpent = period === 'all' ? null : running(expenses.filter((e) => e.spentOn.slice(0, 7) === prevKey(period)));
+  // Every expense is taken off profit.
+  const sum = (list) => list.reduce((s, e) => s + e.amount, 0);
+  const spent = sum(periodExpenses);
+  const linkedSpent = sum(periodExpenses.filter((e) => e.orderId));
+  const prevSpent = period === 'all' ? null : sum(expenses.filter((e) => e.spentOn.slice(0, 7) === prevKey(period)));
   // Profit = money paid by customers − cost of the products sold − expenses
-  const profit = stats.revenue - stats.cost - spent;
-  const prevProfit = prev && prevSpent != null ? prev.revenue - prev.cost - prevSpent : null;
+  const profit = stats.revenue + stats.deliveryFees - stats.cost - spent;
+  const prevProfit = prev && prevSpent != null ? prev.revenue + prev.deliveryFees - prev.cost - prevSpent : null;
 
   // Bars: one per day for a month, one per month for "All time".
   const bars = useMemo(() => {
@@ -138,9 +138,9 @@ export default function Financials({ onGoto, notify }) {
       ]);
     }
     if (periodExpenses.length) {
-      rows.push([], ['EXPENSES'], ['Date', 'Category', 'Note', 'Amount (KES)']);
-      for (const e of periodExpenses) rows.push([e.spentOn, EXPENSE_CATEGORIES.find((c) => c.key === e.category)?.label || e.category, e.note, e.amount]);
-      rows.push([], ['Money paid by customers', stats.revenue], ['Cost of products sold', stats.cost], ['Expenses (excluding stock bought)', spent], ['Profit', profit], ['Stock bought (not in profit)', stockBought]);
+      rows.push([], ['EXPENSES'], ['Date', 'Category', 'Note', 'Order', 'Amount (KES)']);
+      for (const e of periodExpenses) rows.push([e.spentOn, EXPENSE_CATEGORIES.find((c) => c.key === e.category)?.label || e.category, e.note, e.orderId || '', e.amount]);
+      rows.push([], ['Money paid by customers (items)', stats.revenue], ['Delivery fees paid by customers', stats.deliveryFees], ['Cost of products sold', stats.cost], ['Expenses', spent], ['Profit', profit]);
     }
     const blob = new Blob(['﻿' + rows.map((r) => r.map(esc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -220,13 +220,13 @@ export default function Financials({ onGoto, notify }) {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Kpi icon={Banknote} label={`Revenue · ${periodName}`} value={kes(stats.revenue)} sub={`+ ${kes(stats.deliveryFees)} delivery fees`} change={prev && pct(stats.revenue, prev.revenue)} tone="amber" />
-        <Kpi icon={Wallet} label="Expenses" value={kes(spent)} sub={stockBought ? `+ ${kes(stockBought)} stock bought (not in profit)` : `${periodExpenses.length} expense${periodExpenses.length === 1 ? '' : 's'} recorded`} change={prevSpent != null ? pct(spent, prevSpent) : null} invert tone="red" />
+        <Kpi icon={Wallet} label="Expenses" value={kes(spent)} sub={`${periodExpenses.length} expense${periodExpenses.length === 1 ? '' : 's'}${linkedSpent ? ` · ${kes(linkedSpent)} on deliveries` : ''}`} change={prevSpent != null ? pct(spent, prevSpent) : null} invert tone="red" />
         <Kpi icon={TrendingUp} label="Profit" value={<span className={profit < 0 ? 'text-red-500' : 'text-emerald-500'}>{profit < 0 ? '− ' : ''}{kes(Math.abs(profit))}</span>} sub="Sales − product cost − expenses" change={prevProfit != null ? pct(profit, prevProfit) : null} tone="emerald" />
         <Kpi icon={ShoppingCart} label="Orders paid" value={stats.count.toLocaleString()} sub={`${stats.units} item${stats.units === 1 ? '' : 's'} · ${stats.shop} in shop · avg ${kes(stats.aov)}`} change={prev && pct(stats.count, prev.count)} tone="sky" />
       </div>
       <div className="mt-3 glass rounded-2xl px-4 py-3 text-sm flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-muted">How profit is worked out:</span>
-        <span className="font-semibold">{kes(stats.revenue)}</span><span className="text-muted">paid by customers</span>
+        <span className="font-semibold">{kes(stats.revenue + stats.deliveryFees)}</span><span className="text-muted">paid by customers{stats.deliveryFees ? ` (incl. ${kes(stats.deliveryFees)} delivery)` : ''}</span>
         <span className="text-muted">−</span>
         <span className="font-semibold">{kes(stats.cost)}</span><span className="text-muted">product cost</span>
         <span className="text-muted">−</span>
